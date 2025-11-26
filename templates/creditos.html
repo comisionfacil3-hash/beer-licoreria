@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Créditos - Beer Licorería{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos móviles para créditos */
+    .credito-card {
+        border-left: 4px solid #ffc107;
+        transition: all 0.3s;
+    }
+    .credito-card.pendiente {
+        border-left-color: #dc3545;
+    }
+    .credito-card.parcial {
+        border-left-color: #ffc107;
+    }
+    .credito-card.pagado {
+        border-left-color: #28a745;
+    }
+    .credito-card:active {
+        transform: scale(0.98);
+        background-color: #f8f9fa;
+    }
+    
+    /* Botón flotante */
+    .btn-float {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 100;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Cards de estadísticas */
+    .stat-card {
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .stat-card.danger {
+        background: linear-gradient(135deg, #f93b1d 0%, #ea1e63 100%);
+    }
+    .stat-card.success {
+        background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+    }
+    .stat-card.warning {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+    }
+    
+    /* Filtros responsive */
+    .filtros-container {
+        position: sticky;
+        top: 56px;
+        background: white;
+        z-index: 10;
+        padding: 10px 0;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    /* Badge de estado */
+    .estado-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    
+    /* Monto grande */
+    .monto-credito {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+    
+    /* Cliente info */
+    .cliente-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    /* Días vencido */
+    .dias-vencido {
+        background: #dc3545;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3">
+    <!-- Título y estadísticas -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <h4 class="mb-3">
+                <i class="bi bi-credit-card"></i> Gestión de Créditos
+            </h4>
+        </div>
+    </div>
+    
+    <!-- Cards de estadísticas -->
+    <div class="row mb-3" id="estadisticasCreditos">
+        <div class="col-6 col-md-3">
+            <div class="stat-card danger">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="small opacity-75">Pendiente</div>
+                        <div class="h5 mb-0" id="totalPendiente">Bs. 0</div>
+                    </div>
+                    <i class="bi bi-exclamation-circle fs-4"></i>
+                </div>
+                <div class="small mt-1">
+                    <span id="cantidadPendiente">0</span> créditos
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-6 col-md-3">
+            <div class="stat-card warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="small opacity-75">Vencidos</div>
+                        <div class="h5 mb-0" id="totalVencido">Bs. 0</div>
+                    </div>
+                    <i class="bi bi-clock-history fs-4"></i>
+                </div>
+                <div class="small mt-1">
+                    <span id="cantidadVencidos">0</span> > 30 días
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-6 col-md-3">
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="small opacity-75">Cobrado Mes</div>
+                        <div class="h5 mb-0" id="cobradoMes">Bs. 0</div>
+                    </div>
+                    <i class="bi bi-cash-coin fs-4"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="small opacity-75">Clientes</div>
+                        <div class="h5 mb-0" id="totalClientes">0</div>
+                    </div>
+                    <i class="bi bi-people fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="filtros-container">
+        <div class="row g-2">
+            <div class="col-6">
+                <select class="form-select" id="filtroEstado">
+                    <option value="todos">Todos los estados</option>
+                    <option value="pendiente">Pendientes</option>
+                    <option value="parcial">Pago parcial</option>
+                    <option value="pagado">Pagados</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="busquedaCredito" 
+                           placeholder="Buscar cliente...">
+                    <button class="btn btn-outline-secondary" type="button" id="btnBuscar">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" id="btnExportar">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar
+                </button>
+                <button class="btn btn-sm btn-outline-info" id="btnRefrescar">
+                    <i class="bi bi-arrow-clockwise"></i> Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista de créditos -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div id="listaCreditos">
+                <!-- Se carga dinámicamente -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando créditos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de pago rápido -->
+    <div class="modal fade" id="modalPagoRapido" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-cash"></i> Registrar Pago
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formPagoRapido">
+                        <input type="hidden" id="creditoIdPago">
+                        
+                        <div class="alert alert-info">
+                            <div class="d-flex justify-content-between">
+                                <span>Cliente:</span>
+                                <strong id="clientePago">-</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Saldo pendiente:</span>
+                                <strong id="saldoPago">Bs. 0</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Monto a pagar</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text">Bs.</span>
+                                <input type="number" class="form-control" id="montoPago" 
+                                       step="0.01" min="0.01" required>
+                            </div>
+                            <div class="form-text">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" 
+                                        id="btnPagoTotal">Pago Total</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                        id="btnPago50">50%</button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Método de pago</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="metodoPago" 
+                                       id="pagoEfectivo" value="efectivo" checked>
+                                <label class="btn btn-outline-primary" for="pagoEfectivo">
+                                    <i class="bi bi-cash"></i> Efectivo
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="metodoPago" 
+                                       id="pagoQr" value="qr">
+                                <label class="btn btn-outline-primary" for="pagoQr">
+                                    <i class="bi bi-qr-code"></i> QR
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success btn-lg" id="btnConfirmarPago">
+                        <i class="bi bi-check2"></i> Registrar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón flotante para ver resumen por cliente -->
+<button class="btn btn-warning btn-float" id="btnResumenCliente" 
+        data-bs-toggle="tooltip" title="Resumen por cliente">
+    <i class="bi bi-person-lines-fill"></i>
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/creditos.js') }}"></script>
+{% endblock %}

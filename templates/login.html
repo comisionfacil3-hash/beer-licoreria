@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión - Beer Licorería{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+        <div class="col-12 col-md-6 col-lg-4">
+            <!-- Tarjeta de Login -->
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <!-- Logo y título -->
+                    <div class="text-center mb-4">
+                        <i class="bi bi-cup-straw text-primary" style="font-size: 4rem;"></i>
+                        <h2 class="fw-bold mt-3">BEER LICORERÍA</h2>
+                        <p class="text-muted">Sistema de Gestión</p>
+                    </div>
+                    
+                    <!-- Formulario de login -->
+                    <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+                        <!-- Campo Usuario -->
+                        <div class="mb-3">
+                            <label for="username" class="form-label">
+                                <i class="bi bi-person-fill"></i> Usuario
+                            </label>
+                            <input 
+                                type="text" 
+                                class="form-control form-control-lg" 
+                                id="username" 
+                                name="username" 
+                                placeholder="Ingresa tu usuario"
+                                required
+                                autocomplete="username"
+                                autofocus>
+                        </div>
+                        
+                        <!-- Campo Contraseña -->
+                        <div class="mb-4">
+                            <label for="password" class="form-label">
+                                <i class="bi bi-lock-fill"></i> Contraseña
+                            </label>
+                            <div class="input-group">
+                                <input 
+                                    type="password" 
+                                    class="form-control form-control-lg" 
+                                    id="password" 
+                                    name="password" 
+                                    placeholder="Ingresa tu contraseña"
+                                    required
+                                    autocomplete="current-password">
+                                <button 
+                                    class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    id="togglePassword"
+                                    title="Mostrar/Ocultar contraseña">
+                                    <i class="bi bi-eye" id="toggleIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Botón Iniciar Sesión -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Información adicional -->
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> 
+                            Usuario predeterminado: <strong>admin</strong>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Versión del sistema -->
+            <div class="text-center mt-3">
+                <small class="text-muted">Versión 1.0 - Noviembre 2025</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mostrar/Ocultar contraseña
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    });
+    
+    // Validación del formulario
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        
+        if (username === '' || password === '') {
+            e.preventDefault();
+            alert('Por favor, completa todos los campos');
+            return false;
+        }
+    });
+</script>
+{% endblock %}

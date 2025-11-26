@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block title %}Caja - Beer Licorería{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Header de caja */
+    .caja-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    .caja-header.cerrada {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    }
+    
+    /* Display de montos grandes */
+    .monto-display {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    .monto-display.positivo {
+        color: #28a745;
+    }
+    .monto-display.negativo {
+        color: #dc3545;
+    }
+    
+    /* Cards de resumen */
+    .resumen-card {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+        border-left: 4px solid #007bff;
+    }
+    .resumen-card.ingresos {
+        border-left-color: #28a745;
+    }
+    .resumen-card.egresos {
+        border-left-color: #dc3545;
+    }
+    
+    /* Lista de movimientos */
+    .movimiento-item {
+        border-bottom: 1px solid #dee2e6;
+        padding: 12px 0;
+        transition: background 0.2s;
+    }
+    .movimiento-item:last-child {
+        border-bottom: none;
+    }
+    .movimiento-item:active {
+        background: #f8f9fa;
+    }
+    
+    /* Badge de tipo */
+    .tipo-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+    .tipo-badge.ingreso {
+        background: #d4edda;
+        color: #155724;
+    }
+    .tipo-badge.egreso {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    /* Botón de acción grande */
+    .btn-caja-action {
+        height: 60px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 12px;
+    }
+    
+    /* Tabs personalizados */
+    .nav-tabs-caja {
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 20px;
+    }
+    .nav-tabs-caja .nav-link {
+        color: #6c757d;
+        border: none;
+        padding: 10px 20px;
+        font-weight: 500;
+    }
+    .nav-tabs-caja .nav-link.active {
+        color: #007bff;
+        border-bottom: 3px solid #007bff;
+        background: none;
+    }
+    
+    /* Estado de caja */
+    .estado-caja {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    .estado-caja.abierta {
+        background: #28a745;
+        color: white;
+    }
+    .estado-caja.cerrada {
+        background: #6c757d;
+        color: white;
+    }
+    
+    /* Diferencia de caja */
+    .diferencia-display {
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+    .diferencia-display.faltante {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .diferencia-display.sobrante {
+        background: #d4edda;
+        color: #155724;
+    }
+    .diferencia-display.exacto {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3">
+    {% if caja %}
+    <!-- CAJA ABIERTA -->
+    <div class="caja-header">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h4 class="mb-2">
+                    <i class="bi bi-cash-stack"></i> Caja del Día
+                </h4>
+                <div class="estado-caja abierta">
+                    <i class="bi bi-unlock"></i> ABIERTA
+                </div>
+            </div>
+            <button class="btn btn-light btn-sm" onclick="location.href='/caja/historial'">
+                <i class="bi bi-clock-history"></i> Historial
+            </button>
+        </div>
+        
+        <hr class="my-3 opacity-50">
+        
+        <div class="row">
+            <div class="col-6">
+                <small class="opacity-75">Apertura:</small><br>
+                <strong>{{ caja.fecha_apertura }}</strong>
+            </div>
+            <div class="col-6 text-end">
+                <small class="opacity-75">Monto Inicial:</small><br>
+                <strong>Bs. {{ "%.2f"|format(caja.monto_inicial) }}</strong>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabs de navegación -->
+    <ul class="nav nav-tabs nav-tabs-caja" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#resumen">
+                Resumen
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#movimientos">
+                Movimientos <span class="badge bg-secondary" id="countMovimientos">0</span>
+            </button>
+        </li>
+    </ul>
+    
+    <!-- Contenido de tabs -->
+    <div class="tab-content">
+        <!-- Tab Resumen -->
+        <div class="tab-pane fade show active" id="resumen">
+            <!-- Efectivo actual -->
+            <div class="alert alert-info text-center">
+                <small class="text-muted">Efectivo en Caja</small>
+                <div class="monto-display" id="efectivoActual">Bs. 0.00</div>
+            </div>
+            
+            <!-- Cards de resumen -->
+            <div class="row">
+                <div class="col-12 col-md-6">
+                    <div class="resumen-card ingresos">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Total Ingresos</span>
+                            <i class="bi bi-arrow-down-circle text-success"></i>
+                        </div>
+                        <div class="h4 mb-2 text-success" id="totalIngresos">Bs. 0.00</div>
+                        <div class="small text-muted">
+                            <div class="d-flex justify-content-between">
+                                <span>Efectivo:</span>
+                                <span id="ingresosEfectivo">Bs. 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>QR/Transfer:</span>
+                                <span id="ingresosQr">Bs. 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Mixto:</span>
+                                <span id="ingresosMixto">Bs. 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-md-6">
+                    <div class="resumen-card egresos">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted">Total Egresos</span>
+                            <i class="bi bi-arrow-up-circle text-danger"></i>
+                        </div>
+                        <div class="h4 mb-2 text-danger" id="totalEgresos">Bs. 0.00</div>
+                        <div class="small text-muted">
+                            <div class="d-flex justify-content-between">
+                                <span>Efectivo:</span>
+                                <span id="egresosEfectivo">Bs. 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Otros:</span>
+                                <span id="egresosOtros">Bs. 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estadísticas -->
+            <div class="resumen-card mt-3">
+                <h6 class="mb-3">Resumen de Operaciones</h6>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="h5 mb-0" id="numVentas">0</div>
+                        <small class="text-muted">Ventas</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h5 mb-0" id="numCompras">0</div>
+                        <small class="text-muted">Compras</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h5 mb-0" id="numPagos">0</div>
+                        <small class="text-muted">Pagos</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="d-grid gap-2 mt-3">
+                <button class="btn btn-warning btn-caja-action" onclick="abrirModalRetiro()">
+                    <i class="bi bi-cash-coin"></i> Registrar Retiro
+                </button>
+                <button class="btn btn-danger btn-caja-action" onclick="abrirModalCierre()">
+                    <i class="bi bi-lock"></i> Cerrar Caja
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tab Movimientos -->
+        <div class="tab-pane fade" id="movimientos">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Movimientos del día</h6>
+                <button class="btn btn-sm btn-outline-primary" onclick="actualizarMovimientos()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            
+            <div id="listaMovimientos">
+                <!-- Se carga dinámicamente -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <!-- CAJA CERRADA -->
+    <div class="caja-header cerrada">
+        <div class="text-center">
+            <i class="bi bi-lock fs-1 mb-3"></i>
+            <h4>No hay caja abierta</h4>
+            <p class="mb-0 opacity-75">Debe abrir la caja para comenzar las operaciones del día</p>
+        </div>
+    </div>
+    
+    <div class="d-grid gap-2 mt-4">
+        <button class="btn btn-success btn-caja-action" onclick="abrirModalApertura()">
+            <i class="bi bi-unlock"></i> Abrir Caja
+        </button>
+        <button class="btn btn-outline-primary" onclick="location.href='/caja/historial'">
+            <i class="bi bi-clock-history"></i> Ver Historial de Cajas
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Apertura de Caja -->
+<div class="modal fade" id="modalApertura" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-unlock"></i> Abrir Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formApertura">
+                    <div class="mb-3">
+                        <label class="form-label">Monto Inicial (Efectivo)</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">Bs.</span>
+                            <input type="number" class="form-control" id="montoInicial" 
+                                   step="0.01" min="0" value="0" required>
+                        </div>
+                        <div class="form-text">
+                            Ingrese el efectivo con el que inicia la caja
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success btn-lg" onclick="confirmarApertura()">
+                    <i class="bi bi-check2"></i> Abrir Caja
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cierre de Caja -->
+<div class="modal fade" id="modalCierre" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-lock"></i> Cerrar Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Importante:</strong> Antes de cerrar, cuente el efectivo físico en caja
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <small class="text-muted">Efectivo Esperado</small>
+                            <div class="h4 mb-0 text-primary" id="efectivoEsperado">Bs. 0.00</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center p-3 bg-light rounded">
+                            <small class="text-muted">Total Operaciones</small>
+                            <div class="h4 mb-0" id="totalOperaciones">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="formCierre">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Efectivo Contado (Físico)</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">Bs.</span>
+                            <input type="number" class="form-control" id="efectivoContado" 
+                                   step="0.01" min="0" required onchange="calcularDiferencia()">
+                        </div>
+                    </div>
+                    
+                    <div id="diferenciaCaja" style="display: none;">
+                        <!-- Se muestra dinámicamente -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger btn-lg" onclick="confirmarCierre()">
+                    <i class="bi bi-lock"></i> Cerrar Caja
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Retiro de Efectivo -->
+<div class="modal fade" id="modalRetiro" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="bi bi-cash-coin"></i> Registrar Retiro
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formRetiro">
+                    <div class="mb-3">
+                        <label class="form-label">Monto a Retirar</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">Bs.</span>
+                            <input type="number" class="form-control" id="montoRetiro" 
+                                   step="0.01" min="0.01" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Concepto / Motivo</label>
+                        <textarea class="form-control" id="conceptoRetiro" rows="2" 
+                                  placeholder="Ej: Pago a proveedor, gastos varios..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning btn-lg" onclick="confirmarRetiro()">
+                    <i class="bi bi-check2"></i> Registrar Retiro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/caja.js') }}"></script>
+{% endblock %}

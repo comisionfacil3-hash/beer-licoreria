@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+
+{% block title %}Estadísticas - Beer Licorería{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    @media (max-width: 576px) {
+        .chart-container {
+            height: 250px;
+        }
+    }
+    .top-producto-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        border-bottom: 1px solid #eee;
+    }
+    .top-producto-item:last-child {
+        border-bottom: none;
+    }
+    .top-producto-rank {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 0.75rem;
+    }
+    .top-1 { background-color: #ffc107; color: #000; }
+    .top-2 { background-color: #adb5bd; color: #000; }
+    .top-3 { background-color: #cd7f32; color: #fff; }
+    .top-other { background-color: #e9ecef; color: #495057; }
+    
+    .variacion-positiva { color: #28a745; }
+    .variacion-negativa { color: #dc3545; }
+    
+    .filter-tabs .nav-link {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+    .filter-tabs .nav-link.active {
+        background-color: #007bff;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-graph-up text-primary"></i> Estadísticas
+                    </h1>
+                    <small class="text-muted">Análisis de ventas y rendimiento</small>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <!-- Selector de período -->
+                    <select class="form-select form-select-sm" id="selectPeriodo" style="width: auto;">
+                        <option value="7">Últimos 7 días</option>
+                        <option value="15">Últimos 15 días</option>
+                        <option value="30" selected>Últimos 30 días</option>
+                        <option value="90">Últimos 3 meses</option>
+                    </select>
+                    
+                    <!-- Botón exportar -->
+                    <button class="btn btn-success btn-sm" onclick="exportarEstadisticas()">
+                        <i class="bi bi-file-earmark-excel"></i> <span class="d-none d-md-inline">Exportar</span>
+                    </button>
+                </div>
+            </div>
+            <hr class="my-2">
+        </div>
+    </div>
+    
+    <!-- Comparativa Rápida -->
+    <div class="row g-2 mb-4">
+        <!-- Hoy vs Ayer -->
+        <div class="col-4">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body p-2 p-md-3 text-center">
+                    <small class="text-muted d-block">Hoy</small>
+                    <h4 class="mb-0" id="ventasHoy">Bs. 0</h4>
+                    <small id="variacionHoy" class="variacion-positiva">
+                        <i class="bi bi-arrow-up"></i> 0%
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Esta Semana -->
+        <div class="col-4">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body p-2 p-md-3 text-center">
+                    <small class="text-muted d-block">Semana</small>
+                    <h4 class="mb-0" id="ventasSemana">Bs. 0</h4>
+                    <small id="variacionSemana" class="variacion-positiva">
+                        <i class="bi bi-arrow-up"></i> 0%
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Este Mes -->
+        <div class="col-4">
+            <div class="card stat-card border-0 shadow-sm h-100">
+                <div class="card-body p-2 p-md-3 text-center">
+                    <small class="text-muted d-block">Mes</small>
+                    <h4 class="mb-0" id="ventasMes">Bs. 0</h4>
+                    <small id="variacionMes" class="variacion-positiva">
+                        <i class="bi bi-arrow-up"></i> 0%
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resumen Financiero -->
+    <div class="row g-2 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card bg-success bg-opacity-10 border-0">
+                <div class="card-body p-2 text-center">
+                    <i class="bi bi-arrow-up-circle text-success"></i>
+                    <h5 class="mb-0 text-success" id="totalIngresos">Bs. 0</h5>
+                    <small class="text-muted">Ingresos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-danger bg-opacity-10 border-0">
+                <div class="card-body p-2 text-center">
+                    <i class="bi bi-arrow-down-circle text-danger"></i>
+                    <h5 class="mb-0 text-danger" id="totalEgresos">Bs. 0</h5>
+                    <small class="text-muted">Egresos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-primary bg-opacity-10 border-0">
+                <div class="card-body p-2 text-center">
+                    <i class="bi bi-wallet2 text-primary"></i>
+                    <h5 class="mb-0 text-primary" id="gananciaTotal">Bs. 0</h5>
+                    <small class="text-muted">Ganancia</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-info bg-opacity-10 border-0">
+                <div class="card-body p-2 text-center">
+                    <i class="bi bi-receipt text-info"></i>
+                    <h5 class="mb-0 text-info" id="totalTransacciones">0</h5>
+                    <small class="text-muted">Ventas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfica de Ventas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bar-chart text-primary"></i> Ventas por Día
+                    </h6>
+                    <ul class="nav nav-pills nav-sm filter-tabs" id="chartTabs">
+                        <li class="nav-item">
+                            <a class="nav-link active py-1 px-2" data-tipo="ventas" href="#">Ventas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link py-1 px-2" data-tipo="cantidad" href="#">Cantidad</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-2">
+                    <div class="chart-container">
+                        <canvas id="chartVentas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficas de Métodos de Pago y Categorías -->
+    <div class="row g-3 mb-4">
+        <!-- Métodos de Pago -->
+        <div class="col-12 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent py-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-pie-chart text-success"></i> Métodos de Pago
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="chart-container" style="height: 220px;">
+                        <canvas id="chartMetodosPago"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ventas por Categoría -->
+        <div class="col-12 col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent py-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-pie-chart-fill text-warning"></i> Ventas por Categoría
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="chart-container" style="height: 220px;">
+                        <canvas id="chartCategorias"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Productos y Gastos -->
+    <div class="row g-3 mb-4">
+        <!-- Top Productos -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent py-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-trophy text-warning"></i> Top 10 Productos
+                    </h6>
+                </div>
+                <div class="card-body p-0" id="topProductosContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Desglose de Gastos -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent py-2">
+                    <h6 class="mb-0">
+                        <i class="bi bi-cash-stack text-danger"></i> Desglose de Egresos
+                    </h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="chart-container" style="height: 250px;">
+                        <canvas id="chartGastos"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="bi bi-box text-primary"></i> Compra Productos</span>
+                            <strong id="gastoProductos">Bs. 0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><i class="bi bi-basket text-info"></i> Insumos</span>
+                            <strong id="gastoInsumos">Bs. 0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span><i class="bi bi-receipt text-warning"></i> Gastos Operativos</span>
+                            <strong id="gastoOperativos">Bs. 0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+    // ===== VARIABLES GLOBALES =====
+    let chartVentas, chartMetodosPago, chartCategorias, chartGastos;
+    let datosVentas = [];
+    let tipoGraficaVentas = 'ventas'; // ventas o cantidad
+    
+    // ===== INICIALIZACIÓN =====
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📊 Módulo de estadísticas iniciado');
+        
+        inicializarGraficas();
+        cargarDatos();
+        
+        // Eventos
+        document.getElementById('selectPeriodo').addEventListener('change', cargarDatos);
+        
+        // Tabs de gráfica
+        document.querySelectorAll('#chartTabs .nav-link').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('#chartTabs .nav-link').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                tipoGraficaVentas = this.dataset.tipo;
+                actualizarGraficaVentas();
+            });
+        });
+    });
+    
+    // ===== INICIALIZAR GRÁFICAS =====
+    function inicializarGraficas() {
+        // Configuración global
+        Chart.defaults.font.family = "'Segoe UI', sans-serif";
+        Chart.defaults.font.size = 12;
+        
+        // Gráfica de ventas (Barras)
+        const ctxVentas = document.getElementById('chartVentas').getContext('2d');
+        chartVentas = new Chart(ctxVentas, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Ventas (Bs.)',
+                    data: [],
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgb(40, 167, 69)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'Bs. ' + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Gráfica de métodos de pago (Doughnut)
+        const ctxMetodos = document.getElementById('chartMetodosPago').getContext('2d');
+        chartMetodosPago = new Chart(ctxMetodos, {
+            type: 'doughnut',
+            data: {
+                labels: ['Efectivo', 'QR', 'Crédito', 'Mixto'],
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(23, 162, 184, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(108, 117, 125, 0.8)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, padding: 8 }
+                    }
+                }
+            }
+        });
+        
+        // Gráfica de categorías (Pie)
+        const ctxCategorias = document.getElementById('chartCategorias').getContext('2d');
+        chartCategorias = new Chart(ctxCategorias, {
+            type: 'pie',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        'rgba(0, 123, 255, 0.8)',
+                        'rgba(40, 167, 69, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)',
+                        'rgba(23, 162, 184, 0.8)',
+                        'rgba(111, 66, 193, 0.8)',
+                        'rgba(253, 126, 20, 0.8)',
+                        'rgba(108, 117, 125, 0.8)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 12, padding: 8 }
+                    }
+                }
+            }
+        });
+        
+        // Gráfica de gastos (Doughnut)
+        const ctxGastos = document.getElementById('chartGastos').getContext('2d');
+        chartGastos = new Chart(ctxGastos, {
+            type: 'doughnut',
+            data: {
+                labels: ['Productos', 'Insumos', 'Gastos Operativos'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: [
+                        'rgba(0, 123, 255, 0.8)',
+                        'rgba(23, 162, 184, 0.8)',
+                        'rgba(255, 193, 7, 0.8)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    // ===== CARGAR DATOS =====
+    async function cargarDatos() {
+        const dias = document.getElementById('selectPeriodo').value;
+        const fechaHasta = new Date();
+        const fechaDesde = new Date();
+        fechaDesde.setDate(fechaDesde.getDate() - parseInt(dias));
+        
+        const desde = fechaDesde.toISOString().split('T')[0];
+        const hasta = fechaHasta.toISOString().split('T')[0];
+        
+        try {
+            // Cargar comparativa
+            await cargarComparativa();
+            
+            // Cargar resumen financiero
+            await cargarResumen(desde, hasta);
+            
+            // Cargar ventas por día
+            await cargarVentasPorDia(desde, hasta);
+            
+            // Cargar categorías
+            await cargarCategorias(desde, hasta);
+            
+            // Cargar top productos
+            await cargarTopProductos(desde, hasta);
+            
+        } catch (error) {
+            console.error('Error al cargar datos:', error);
+            Notification.error('Error al cargar estadísticas');
+        }
+    }
+    
+    // ===== CARGAR COMPARATIVA =====
+    async function cargarComparativa() {
+        const response = await fetch('/api/estadisticas/comparativa');
+        const data = await response.json();
+        
+        if (data.success) {
+            const comp = data.data;
+            
+            // Hoy
+            document.getElementById('ventasHoy').textContent = Format.currency(comp.hoy.total);
+            actualizarVariacion('variacionHoy', comp.hoy.variacion);
+            
+            // Semana
+            document.getElementById('ventasSemana').textContent = Format.currency(comp.semana.total);
+            actualizarVariacion('variacionSemana', comp.semana.variacion);
+            
+            // Mes
+            document.getElementById('ventasMes').textContent = Format.currency(comp.mes.total);
+            actualizarVariacion('variacionMes', comp.mes.variacion);
+        }
+    }
+    
+    function actualizarVariacion(elementId, variacion) {
+        const element = document.getElementById(elementId);
+        const esPositivo = variacion >= 0;
+        element.className = esPositivo ? 'variacion-positiva' : 'variacion-negativa';
+        element.innerHTML = `
+            <i class="bi bi-arrow-${esPositivo ? 'up' : 'down'}"></i> 
+            ${Math.abs(variacion)}%
+        `;
+    }
+    
+    // ===== CARGAR RESUMEN =====
+    async function cargarResumen(desde, hasta) {
+        const response = await fetch(`/api/estadisticas/resumen?desde=${desde}&hasta=${hasta}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const res = data.data;
+            
+            document.getElementById('totalIngresos').textContent = Format.currency(res.resumen.ingresos);
+            document.getElementById('totalEgresos').textContent = Format.currency(res.resumen.egresos);
+            document.getElementById('gananciaTotal').textContent = Format.currency(res.resumen.ganancia_bruta);
+            document.getElementById('totalTransacciones').textContent = res.ventas.cantidad;
+            
+            // Actualizar gráfica de métodos de pago
+            chartMetodosPago.data.datasets[0].data = [
+                res.ventas.efectivo,
+                res.ventas.qr,
+                res.ventas.credito,
+                0 // mixto ya está incluido en efectivo y qr
+            ];
+            chartMetodosPago.update();
+            
+            // Actualizar gráfica de gastos
+            chartGastos.data.datasets[0].data = [
+                res.compras.productos,
+                res.compras.insumos,
+                res.compras.gastos
+            ];
+            chartGastos.update();
+            
+            document.getElementById('gastoProductos').textContent = Format.currency(res.compras.productos);
+            document.getElementById('gastoInsumos').textContent = Format.currency(res.compras.insumos);
+            document.getElementById('gastoOperativos').textContent = Format.currency(res.compras.gastos);
+        }
+    }
+    
+    // ===== CARGAR VENTAS POR DÍA =====
+    async function cargarVentasPorDia(desde, hasta) {
+        const response = await fetch(`/api/estadisticas/ventas?periodo=dia&desde=${desde}&hasta=${hasta}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            datosVentas = data.data;
+            actualizarGraficaVentas();
+        }
+    }
+    
+    function actualizarGraficaVentas() {
+        const labels = datosVentas.map(v => {
+            const fecha = new Date(v.periodo + 'T00:00:00');
+            return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+        });
+        
+        let datos, label, color;
+        
+        if (tipoGraficaVentas === 'ventas') {
+            datos = datosVentas.map(v => v.total);
+            label = 'Ventas (Bs.)';
+            color = 'rgba(40, 167, 69, 0.7)';
+        } else {
+            datos = datosVentas.map(v => v.cantidad);
+            label = 'Cantidad de ventas';
+            color = 'rgba(0, 123, 255, 0.7)';
+        }
+        
+        chartVentas.data.labels = labels;
+        chartVentas.data.datasets[0].data = datos;
+        chartVentas.data.datasets[0].label = label;
+        chartVentas.data.datasets[0].backgroundColor = color;
+        chartVentas.data.datasets[0].borderColor = color.replace('0.7', '1');
+        
+        chartVentas.options.scales.y.ticks.callback = function(value) {
+            return tipoGraficaVentas === 'ventas' ? 'Bs. ' + value : value;
+        };
+        
+        chartVentas.update();
+    }
+    
+    // ===== CARGAR CATEGORÍAS =====
+    async function cargarCategorias(desde, hasta) {
+        const response = await fetch(`/api/estadisticas/categorias?desde=${desde}&hasta=${hasta}`);
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+            chartCategorias.data.labels = data.data.map(c => c.categoria || 'Sin categoría');
+            chartCategorias.data.datasets[0].data = data.data.map(c => c.total);
+            chartCategorias.update();
+        }
+    }
+    
+    // ===== CARGAR TOP PRODUCTOS =====
+    async function cargarTopProductos(desde, hasta) {
+        const response = await fetch(`/api/estadisticas/top-productos?limite=10&desde=${desde}&hasta=${hasta}`);
+        const data = await response.json();
+        
+        const container = document.getElementById('topProductosContainer');
+        
+        if (data.success && data.data.length > 0) {
+            container.innerHTML = data.data.map((prod, idx) => {
+                const rankClass = idx === 0 ? 'top-1' : idx === 1 ? 'top-2' : idx === 2 ? 'top-3' : 'top-other';
+                return `
+                    <div class="top-producto-item">
+                        <div class="top-producto-rank ${rankClass}">${idx + 1}</div>
+                        <div class="flex-grow-1">
+                            <div class="fw-medium">${prod.producto_nombre}</div>
+                            <small class="text-muted">${prod.categoria || 'Sin categoría'} • ${prod.cantidad_vendida} vendidos</small>
+                        </div>
+                        <div class="text-end">
+                            <strong class="text-success">${Format.currency(prod.total_vendido)}</strong>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1"></i>
+                    <p class="mb-0">No hay ventas en este período</p>
+                </div>
+            `;
+        }
+    }
+    
+    // ===== EXPORTAR =====
+    function exportarEstadisticas() {
+        const dias = document.getElementById('selectPeriodo').value;
+        const fechaHasta = new Date();
+        const fechaDesde = new Date();
+        fechaDesde.setDate(fechaDesde.getDate() - parseInt(dias));
+        
+        const desde = fechaDesde.toISOString().split('T')[0];
+        const hasta = fechaHasta.toISOString().split('T')[0];
+        
+        window.location.href = `/api/estadisticas/exportar?desde=${desde}&hasta=${hasta}`;
+    }
+</script>
+{% endblock %}

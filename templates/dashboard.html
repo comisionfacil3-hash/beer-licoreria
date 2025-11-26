@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Beer Licorería{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado del Dashboard -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                    <h1 class="h2 mb-0">
+                        <i class="bi bi-house-door text-primary"></i> Dashboard
+                    </h1>
+                    <p class="text-muted mb-0">Resumen general de tu negocio</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted d-block">
+                        <i class="bi bi-calendar3"></i> <span id="currentDate"></span>
+                    </small>
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> <span id="currentTime"></span>
+                    </small>
+                </div>
+            </div>
+            <hr>
+        </div>
+    </div>
+    
+    <!-- Tarjetas de Resumen Rápido -->
+    <div class="row g-3 mb-4">
+        <!-- Tarjeta: Productos -->
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2 small">Total Productos</h6>
+                            <h3 class="mb-0 fw-bold" id="totalProductos">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </h3>
+                            <small class="text-warning" id="stockBajoText">
+                                <i class="bi bi-exclamation-triangle"></i> <span id="stockBajo">0</span> con stock bajo
+                            </small>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-2 rounded">
+                            <i class="bi bi-box-seam text-primary fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="{{ url_for('productos') }}" class="text-decoration-none small">
+                        Ver inventario <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tarjeta: Ventas del Día -->
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2 small">Ventas Hoy</h6>
+                            <h3 class="mb-0 fw-bold text-success" id="ventasHoy">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </h3>
+                            <small class="text-muted">
+                                <i class="bi bi-cart-check"></i> <span id="ventasCantidad">0</span> ventas
+                            </small>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-2 rounded">
+                            <i class="bi bi-cash-coin text-success fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="{{ url_for('pos') }}" class="text-decoration-none small">
+                        Ir al POS <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tarjeta: Créditos Pendientes -->
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2 small">Créditos Pendientes</h6>
+                            <h3 class="mb-0 fw-bold text-warning" id="creditosPendientes">
+                                <span class="spinner-border spinner-border-sm"></span>
+                            </h3>
+                            <small class="text-muted">
+                                <i class="bi bi-people"></i> <span id="creditosCantidad">0</span> clientes
+                            </small>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-2 rounded">
+                            <i class="bi bi-credit-card text-warning fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="{{ url_for('creditos') }}" class="text-decoration-none small">
+                        Ver créditos <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tarjeta: Estado de Caja -->
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100" id="cardCaja">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted mb-2 small">Estado de Caja</h6>
+                            <h4 class="mb-0">
+                                <span class="badge" id="estadoCaja">
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                </span>
+                            </h4>
+                            <small class="text-muted" id="montoCaja">
+                                <i class="bi bi-cash-stack"></i> Bs. 0.00
+                            </small>
+                        </div>
+                        <div class="p-2 rounded" id="iconCaja">
+                            <i class="bi bi-safe fs-4" id="iconCajaIcon"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 pt-0">
+                    <a href="{{ url_for('caja') }}" class="text-decoration-none small">
+                        Gestionar caja <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Fila de Métricas del Mes -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <h5 class="mb-3">
+                <i class="bi bi-calendar-month text-info"></i> Resumen del Mes
+            </h5>
+        </div>
+        
+        <!-- Ventas del Mes -->
+        <div class="col-6 col-md-3">
+            <div class="card bg-success bg-opacity-10 border-0">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-graph-up-arrow text-success fs-3"></i>
+                    <h4 class="mb-0 mt-2 text-success" id="ventasMes">Bs. 0</h4>
+                    <small class="text-muted">Ventas del Mes</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gastos del Mes -->
+        <div class="col-6 col-md-3">
+            <div class="card bg-danger bg-opacity-10 border-0">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-graph-down-arrow text-danger fs-3"></i>
+                    <h4 class="mb-0 mt-2 text-danger" id="gastosMes">Bs. 0</h4>
+                    <small class="text-muted">Compras/Gastos</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ganancia del Mes -->
+        <div class="col-6 col-md-3">
+            <div class="card bg-primary bg-opacity-10 border-0">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-wallet2 text-primary fs-3"></i>
+                    <h4 class="mb-0 mt-2" id="gananciaMes">Bs. 0</h4>
+                    <small class="text-muted">Ganancia Bruta</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Total Ventas (cantidad) -->
+        <div class="col-6 col-md-3">
+            <div class="card bg-info bg-opacity-10 border-0">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-receipt text-info fs-3"></i>
+                    <h4 class="mb-0 mt-2 text-info" id="ventasMesCantidad">0</h4>
+                    <small class="text-muted">Transacciones</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sección de Accesos Rápidos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3">
+                <i class="bi bi-lightning-charge text-warning"></i> Accesos Rápidos
+            </h5>
+            <div class="row g-2">
+                <!-- Botón: Nueva Venta -->
+                <div class="col-4 col-md-2">
+                    <a href="{{ url_for('pos') }}" class="btn btn-outline-primary w-100 py-3">
+                        <i class="bi bi-cart-plus fs-4 d-block mb-1"></i>
+                        <small>Nueva Venta</small>
+                    </a>
+                </div>
+                
+                <!-- Botón: Registrar Compra -->
+                <div class="col-4 col-md-2">
+                    <a href="{{ url_for('compra_nueva') }}" class="btn btn-outline-success w-100 py-3">
+                        <i class="bi bi-bag-plus fs-4 d-block mb-1"></i>
+                        <small>Compra</small>
+                    </a>
+                </div>
+                
+                <!-- Botón: Ver Créditos -->
+                <div class="col-4 col-md-2">
+                    <a href="{{ url_for('creditos') }}" class="btn btn-outline-warning w-100 py-3">
+                        <i class="bi bi-credit-card-2-front fs-4 d-block mb-1"></i>
+                        <small>Créditos</small>
+                    </a>
+                </div>
+                
+                <!-- Botón: Caja -->
+                <div class="col-4 col-md-2">
+                    <a href="{{ url_for('caja') }}" class="btn btn-outline-info w-100 py-3">
+                        <i class="bi bi-safe2 fs-4 d-block mb-1"></i>
+                        <small>Caja</small>
+                    </a>
+                </div>
+                
+                <!-- Botón: Productos -->
+                <div class="col-4 col-md-2">
+                    <a href="{{ url_for('productos') }}" class="btn btn-outline-secondary w-100 py-3">
+                        <i class="bi bi-boxes fs-4 d-block mb-1"></i>
+                        <small>Productos</small>
+                    </a>
+                </div>
+                
+                <!-- Botón: Estadísticas -->
+                <div class="col-4 col-md-2">
+                    <a href="{{ url_for('estadisticas') }}" class="btn btn-outline-dark w-100 py-3">
+                        <i class="bi bi-graph-up-arrow fs-4 d-block mb-1"></i>
+                        <small>Estadísticas</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sección de Alertas e Información -->
+    <div class="row">
+        <div class="col-12 col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bell text-warning"></i> Alertas del Sistema
+                    </h6>
+                </div>
+                <div class="card-body" id="alertasContainer">
+                    <div class="alert alert-info mb-2 py-2">
+                        <i class="bi bi-info-circle"></i> 
+                        <small>Cargando alertas...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-12 col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pt-3">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-info"></i> Estado del Sistema
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush small">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            Servidor
+                            <span class="badge bg-success rounded-pill">
+                                <i class="bi bi-check-circle"></i> Activo
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            Base de Datos
+                            <span class="badge bg-success rounded-pill">
+                                <i class="bi bi-check-circle"></i> Conectada
+                            </span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            Módulos Activos
+                            <span class="badge bg-primary rounded-pill">8 / 8</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            Versión del Sistema
+                            <span class="badge bg-secondary rounded-pill">v2.0</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ===== VARIABLES =====
+    let dashboardStats = null;
+    
+    // ===== INICIALIZACIÓN =====
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📊 Dashboard iniciado');
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+        
+        // Cargar datos reales
+        cargarEstadisticas();
+        
+        // WebSocket para actualizaciones
+        if (typeof io !== 'undefined') {
+            const socket = io();
+            
+            socket.on('venta_creada', () => cargarEstadisticas());
+            socket.on('compra_creada', () => cargarEstadisticas());
+            socket.on('pago_credito_registrado', () => cargarEstadisticas());
+            socket.on('caja_abierta', () => cargarEstadisticas());
+            socket.on('caja_cerrada', () => cargarEstadisticas());
+        }
+    });
+    
+    // ===== FECHA Y HORA =====
+    function updateDateTime() {
+        const now = new Date();
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const dateStr = now.toLocaleDateString('es-ES', dateOptions);
+        document.getElementById('currentDate').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+        document.getElementById('currentTime').textContent = now.toLocaleTimeString('es-ES');
+    }
+    
+    // ===== CARGAR ESTADÍSTICAS =====
+    async function cargarEstadisticas() {
+        try {
+            const response = await fetch('/api/dashboard/stats');
+            const data = await response.json();
+            
+            if (data.success) {
+                dashboardStats = data.data;
+                actualizarUI();
+            } else {
+                console.error('Error al cargar estadísticas:', data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+    
+    // ===== ACTUALIZAR INTERFAZ =====
+    function actualizarUI() {
+        if (!dashboardStats) return;
+        
+        const stats = dashboardStats;
+        
+        // Productos
+        document.getElementById('totalProductos').textContent = stats.productos.total;
+        document.getElementById('stockBajo').textContent = stats.productos.stock_bajo;
+        
+        if (stats.productos.stock_bajo > 0) {
+            document.getElementById('stockBajoText').classList.remove('d-none');
+        } else {
+            document.getElementById('stockBajoText').innerHTML = '<i class="bi bi-check-circle text-success"></i> Stock OK';
+        }
+        
+        // Ventas de hoy
+        document.getElementById('ventasHoy').textContent = Format.currency(stats.ventas_hoy.total);
+        document.getElementById('ventasCantidad').textContent = stats.ventas_hoy.cantidad;
+        
+        // Créditos pendientes
+        document.getElementById('creditosPendientes').textContent = Format.currency(stats.creditos.total);
+        document.getElementById('creditosCantidad').textContent = stats.creditos.cantidad;
+        
+        // Estado de caja
+        const estadoCaja = document.getElementById('estadoCaja');
+        const montoCaja = document.getElementById('montoCaja');
+        const iconCaja = document.getElementById('iconCaja');
+        const iconCajaIcon = document.getElementById('iconCajaIcon');
+        
+        if (stats.caja.abierta) {
+            estadoCaja.className = 'badge bg-success';
+            estadoCaja.textContent = 'Abierta';
+            montoCaja.innerHTML = `<i class="bi bi-cash-stack"></i> ${Format.currency(stats.caja.monto_actual)}`;
+            iconCaja.className = 'bg-success bg-opacity-10 p-2 rounded';
+            iconCajaIcon.className = 'bi bi-safe text-success fs-4';
+        } else {
+            estadoCaja.className = 'badge bg-danger';
+            estadoCaja.textContent = 'Cerrada';
+            montoCaja.innerHTML = '<i class="bi bi-lock"></i> Sin caja abierta';
+            iconCaja.className = 'bg-danger bg-opacity-10 p-2 rounded';
+            iconCajaIcon.className = 'bi bi-safe text-danger fs-4';
+        }
+        
+        // Métricas del mes
+        document.getElementById('ventasMes').textContent = Format.currency(stats.ventas_mes.total);
+        document.getElementById('ventasMesCantidad').textContent = stats.ventas_mes.cantidad;
+        document.getElementById('gastosMes').textContent = Format.currency(stats.gastos_mes);
+        
+        const gananciaMes = document.getElementById('gananciaMes');
+        gananciaMes.textContent = Format.currency(stats.ganancia_mes);
+        gananciaMes.className = stats.ganancia_mes >= 0 ? 'mb-0 mt-2 text-primary' : 'mb-0 mt-2 text-danger';
+        
+        // Alertas
+        actualizarAlertas(stats);
+    }
+    
+    // ===== ACTUALIZAR ALERTAS =====
+    function actualizarAlertas(stats) {
+        const container = document.getElementById('alertasContainer');
+        let alertasHTML = '';
+        
+        // Alerta de caja
+        if (!stats.caja.abierta) {
+            alertasHTML += `
+                <div class="alert alert-danger mb-2 py-2">
+                    <i class="bi bi-exclamation-octagon"></i> 
+                    <small><strong>Caja cerrada</strong> - Debes abrir caja para vender</small>
+                    <a href="{{ url_for('caja') }}" class="alert-link ms-2">Abrir caja</a>
+                </div>
+            `;
+        }
+        
+        // Alerta de stock bajo
+        if (stats.productos.stock_bajo > 0) {
+            alertasHTML += `
+                <div class="alert alert-warning mb-2 py-2">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    <small><strong>${stats.productos.stock_bajo} productos</strong> con stock bajo</small>
+                    <a href="{{ url_for('productos') }}" class="alert-link ms-2">Ver productos</a>
+                </div>
+            `;
+        }
+        
+        // Alerta de créditos
+        if (stats.creditos.cantidad > 0) {
+            alertasHTML += `
+                <div class="alert alert-info mb-2 py-2">
+                    <i class="bi bi-info-circle"></i> 
+                    <small><strong>${stats.creditos.cantidad} créditos</strong> pendientes por ${Format.currency(stats.creditos.total)}</small>
+                    <a href="{{ url_for('creditos') }}" class="alert-link ms-2">Ver créditos</a>
+                </div>
+            `;
+        }
+        
+        // Si no hay alertas
+        if (!alertasHTML) {
+            alertasHTML = `
+                <div class="alert alert-success mb-0 py-2">
+                    <i class="bi bi-check-circle"></i> 
+                    <small><strong>Todo en orden</strong> - No hay alertas pendientes</small>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = alertasHTML;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}{% if compra %}Editar Compra{% else %}Nueva Compra{% endif %} - Beer Licorería{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos móviles para formulario */
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 15px;
+    }
+    
+    .form-select, .form-control {
+        height: 48px;
+        font-size: 16px;
+    }
+    
+    .btn-action {
+        height: 48px;
+        min-width: 100px;
+    }
+    
+    /* Tabs para tipos de compra */
+    .nav-tabs .nav-link {
+        padding: 12px 20px;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    /* Selector de productos */
+    .producto-item {
+        padding: 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .producto-item:hover {
+        background-color: #f8f9fa;
+        border-color: #007bff;
+    }
+    
+    .producto-item.selected {
+        background-color: #e7f1ff;
+        border-color: #007bff;
+    }
+    
+    /* Lista de productos agregados */
+    .producto-agregado {
+        background-color: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .producto-agregado input {
+        max-width: 100px;
+        display: inline-block;
+    }
+    
+    /* Responsive */
+    @media (max-width: 576px) {
+        .nav-tabs .nav-link {
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+        
+        .btn-group-mobile {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-group-mobile .btn {
+            flex: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-bag-plus"></i>
+                {% if compra %}Editar Compra #{{ compra.id }}{% else %}Registrar Nueva Compra{% endif %}
+            </h4>
+        </div>
+        
+        <div class="card-body">
+            <!-- Tabs para tipo de compra -->
+            <ul class="nav nav-tabs mb-4" id="tipoCompraTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="productos-tab" data-bs-toggle="tab" data-bs-target="#productos" type="button" role="tab">
+                        <i class="bi bi-box"></i> Productos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="insumos-tab" data-bs-toggle="tab" data-bs-target="#insumos" type="button" role="tab">
+                        <i class="bi bi-cup-straw"></i> Insumos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="gastos-tab" data-bs-toggle="tab" data-bs-target="#gastos" type="button" role="tab">
+                        <i class="bi bi-receipt"></i> Gastos
+                    </button>
+                </li>
+            </ul>
+            
+            <form id="formCompra" method="POST">
+                <!-- Campo oculto para tipo de compra -->
+                <input type="hidden" id="tipoCompra" name="tipo" value="productos">
+                
+                <!-- Contenido de tabs -->
+                <div class="tab-content" id="tipoCompraContent">
+                    <!-- Tab Productos -->
+                    <div class="tab-pane fade show active" id="productos" role="tabpanel">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Registra compras de productos para el inventario. El stock se actualizará automáticamente.
+                        </div>
+                        
+                        <!-- Búsqueda de productos -->
+                        <div class="mb-3">
+                            <label class="form-label">Buscar Producto:</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" id="buscarProducto" class="form-control" placeholder="Escribe para buscar...">
+                            </div>
+                        </div>
+                        
+                        <!-- Lista de productos disponibles -->
+                        <div id="listaProductos" class="mb-3" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Se llenará con JavaScript -->
+                        </div>
+                        
+                        <!-- Productos agregados -->
+                        <div id="productosAgregados" class="mb-3">
+                            <h6>Productos en la compra:</h6>
+                            <div id="itemsCompra">
+                                <!-- Se llenará con JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Insumos -->
+                    <div class="tab-pane fade" id="insumos" role="tabpanel">
+                        <div class="alert alert-warning">
+                            <i class="bi bi-info-circle"></i> 
+                            Registra compras de insumos como vasos, bolsas, servilletas, hielo, etc.
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Descripción del Insumo:</label>
+                            <textarea name="descripcion_insumo" class="form-control" rows="3" 
+                                      placeholder="Ej: 500 vasos descartables, 100 bolsas plásticas"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Gastos -->
+                    <div class="tab-pane fade" id="gastos" role="tabpanel">
+                        <div class="alert alert-danger">
+                            <i class="bi bi-info-circle"></i> 
+                            Registra gastos operativos del negocio.
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de Gasto:</label>
+                            <select name="tipo_gasto" class="form-select">
+                                <option value="">Selecciona...</option>
+                                <option value="luz">Luz Eléctrica</option>
+                                <option value="agua">Agua</option>
+                                <option value="alquiler">Alquiler Local</option>
+                                <option value="sueldo">Sueldos</option>
+                                <option value="internet">Internet</option>
+                                <option value="telefono">Teléfono</option>
+                                <option value="impuesto">Impuestos</option>
+                                <option value="mantenimiento">Mantenimiento</option>
+                                <option value="publicidad">Publicidad</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Descripción:</label>
+                            <input type="text" name="descripcion_gasto" class="form-control" 
+                                   placeholder="Ej: Factura de luz mes Noviembre">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Campos comunes para todos los tipos -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Proveedor/Empresa:</label>
+                        <input type="text" name="proveedor" class="form-control" 
+                               placeholder="Ej: Distribuidora ABC" required>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Monto Total:</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Bs.</span>
+                            <input type="number" id="montoTotal" name="monto" class="form-control" 
+                                   step="0.01" min="0" placeholder="0.00" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Método de Pago:</label>
+                        <select name="metodo_pago" class="form-select" required>
+                            <option value="">Selecciona...</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia/QR</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="credito">Crédito (Por pagar)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Fecha de Compra:</label>
+                        <input type="datetime-local" name="fecha" class="form-control" 
+                               value="{{ datetime.now().strftime('%Y-%m-%dT%H:%M') }}" required>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Observaciones (Opcional):</label>
+                    <textarea name="observaciones" class="form-control" rows="2" 
+                              placeholder="Notas adicionales..."></textarea>
+                </div>
+                
+                <!-- Total resumen -->
+                <div class="alert alert-success">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Total a Pagar:</h5>
+                        <h4 class="mb-0">Bs. <span id="totalResumen">0.00</span></h4>
+                    </div>
+                </div>
+                
+                <!-- Botones de acción -->
+                <div class="btn-group-mobile">
+                    <button type="submit" class="btn btn-primary btn-action">
+                        <i class="bi bi-check-lg"></i> Guardar Compra
+                    </button>
+                    <a href="{{ url_for('compras') }}" class="btn btn-secondary btn-action">
+                        <i class="bi bi-x-lg"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Confirmar Compra</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de registrar esta compra?</p>
+                <div id="resumenCompra"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCompra">
+                    <i class="bi bi-check-lg"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/compras.js') }}"></script>
+{% endblock %}

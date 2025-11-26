@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+{% block title %}Historial de Cajas - Beer Licorería{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Cards de caja */
+    .caja-card {
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .caja-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .caja-card:active {
+        transform: scale(0.98);
+    }
+    
+    /* Badge de diferencia */
+    .diferencia-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+    .diferencia-badge.faltante {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .diferencia-badge.sobrante {
+        background: #d4edda;
+        color: #155724;
+    }
+    .diferencia-badge.exacto {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    /* Filtros sticky */
+    .filtros-historial {
+        position: sticky;
+        top: 56px;
+        background: white;
+        z-index: 10;
+        padding: 15px 0;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    /* Stats cards */
+    .stat-mini {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    /* Monto display */
+    .monto-caja {
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+    
+    /* Fecha badge */
+    .fecha-badge {
+        background: #f8f9fa;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-3">
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4>
+                    <i class="bi bi-clock-history"></i> Historial de Cajas
+                </h4>
+                <a href="{{ url_for('caja') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estadísticas rápidas -->
+    <div class="row mb-3">
+        <div class="col-4">
+            <div class="stat-mini">
+                <div class="small opacity-75">Este Mes</div>
+                <div class="fw-bold" id="cajasMes">0</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-mini">
+                <div class="small opacity-75">Promedio</div>
+                <div class="fw-bold" id="promedioVentas">Bs. 0</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-mini">
+                <div class="small opacity-75">Total</div>
+                <div class="fw-bold" id="totalCajas">0</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="filtros-historial">
+        <div class="row g-2">
+            <div class="col-6">
+                <input type="date" class="form-control" id="fechaDesde" 
+                       placeholder="Desde">
+            </div>
+            <div class="col-6">
+                <input type="date" class="form-control" id="fechaHasta" 
+                       placeholder="Hasta">
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-primary btn-sm" onclick="aplicarFiltros()">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltros()">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </button>
+                <button class="btn btn-success btn-sm ms-auto" onclick="exportarHistorial()">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista de cajas -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div id="listaCajas">
+                <!-- Se carga dinámicamente -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando historial...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle de Caja -->
+<div class="modal fade" id="modalDetalleCaja" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-md-down">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-receipt"></i> Detalle de Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetalle">
+                <!-- Se carga dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="exportarCajaIndividual()">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variables globales
+let cajasHistorial = [];
+let cajaSeleccionada = null;
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', function() {
+    // Establecer fecha por defecto (último mes)
+    const hoy = new Date();
+    const hace30Dias = new Date(hoy.getTime() - (30 * 24 * 60 * 60 * 1000));
+    
+    document.getElementById('fechaDesde').valueAsDate = hace30Dias;
+    document.getElementById('fechaHasta').valueAsDate = hoy;
+    
+    // Cargar historial
+    cargarHistorial();
+});
+
+// Cargar historial
+async function cargarHistorial() {
+    try {
+        const fechaDesde = document.getElementById('fechaDesde').value;
+        const fechaHasta = document.getElementById('fechaHasta').value;
+        
+        const params = new URLSearchParams();
+        if (fechaDesde) params.append('fecha_desde', fechaDesde);
+        if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+        
+        const response = await fetch(`/api/caja/historial?${params}`);
+        cajasHistorial = await response.json();
+        
+        renderizarHistorial();
+        calcularEstadisticas();
+        
+    } catch (error) {
+        console.error('Error al cargar historial:', error);
+        document.getElementById('listaCajas').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Error al cargar el historial
+            </div>
+        `;
+    }
+}
+
+// Renderizar historial
+function renderizarHistorial() {
+    const container = document.getElementById('listaCajas');
+    
+    if (cajasHistorial.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted"></i>
+                <p class="mt-3 text-muted">No se encontraron cajas en este período</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    
+    cajasHistorial.forEach(caja => {
+        const diferencia = caja.diferencia || 0;
+        let claseDiferencia = 'exacto';
+        let textoDiferencia = 'Exacto';
+        
+        if (diferencia < 0) {
+            claseDiferencia = 'faltante';
+            textoDiferencia = `Faltante: Bs. ${Math.abs(diferencia).toFixed(2)}`;
+        } else if (diferencia > 0) {
+            claseDiferencia = 'sobrante';
+            textoDiferencia = `Sobrante: Bs. ${diferencia.toFixed(2)}`;
+        }
+        
+        html += `
+            <div class="caja-card" onclick="verDetalleCaja(${caja.id})">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="mb-1">Caja #${caja.id}</h6>
+                        <span class="fecha-badge">
+                            <i class="bi bi-calendar"></i> ${formatearFecha(caja.fecha_apertura)}
+                        </span>
+                    </div>
+                    <div class="diferencia-badge ${claseDiferencia}">
+                        ${textoDiferencia}
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-4 text-center">
+                        <small class="text-muted d-block">Inicial</small>
+                        <strong>Bs. ${caja.monto_inicial.toFixed(2)}</strong>
+                    </div>
+                    <div class="col-4 text-center">
+                        <small class="text-muted d-block">Ingresos</small>
+                        <strong class="text-success">Bs. ${caja.total_ingresos.toFixed(2)}</strong>
+                    </div>
+                    <div class="col-4 text-center">
+                        <small class="text-muted d-block">Egresos</small>
+                        <strong class="text-danger">Bs. ${caja.total_egresos.toFixed(2)}</strong>
+                    </div>
+                </div>
+                
+                <hr class="my-2">
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> 
+                        ${calcularDuracion(caja.fecha_apertura, caja.fecha_cierre)}
+                    </small>
+                    <span class="monto-caja text-primary">
+                        Bs. ${caja.efectivo_contado.toFixed(2)}
+                    </span>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Ver detalle de caja
+async function verDetalleCaja(cajaId) {
+    try {
+        cajaSeleccionada = cajaId;
+        
+        const response = await fetch(`/api/caja/${cajaId}/detalle`);
+        const data = await response.json();
+        
+        const modalBody = document.getElementById('contenidoDetalle');
+        
+        modalBody.innerHTML = `
+            <div class="p-3">
+                <!-- Información general -->
+                <div class="mb-4">
+                    <h6 class="text-primary mb-3">Información General</h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <small class="text-muted">Apertura:</small><br>
+                            <strong>${formatearFecha(data.caja.fecha_apertura)}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Cierre:</small><br>
+                            <strong>${formatearFecha(data.caja.fecha_cierre)}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Monto Inicial:</small><br>
+                            <strong>Bs. ${data.caja.monto_inicial.toFixed(2)}</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Usuario:</small><br>
+                            <strong>${data.caja.usuario || 'admin'}</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resumen financiero -->
+                <div class="mb-4">
+                    <h6 class="text-primary mb-3">Resumen Financiero</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Total Ingresos:</td>
+                            <td class="text-end text-success">+ Bs. ${data.caja.total_ingresos.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td>Total Egresos:</td>
+                            <td class="text-end text-danger">- Bs. ${data.caja.total_egresos.toFixed(2)}</td>
+                        </tr>
+                        <tr class="table-active fw-bold">
+                            <td>Balance:</td>
+                            <td class="text-end">Bs. ${(data.caja.total_ingresos - data.caja.total_egresos).toFixed(2)}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Cierre de caja -->
+                <div class="mb-4">
+                    <h6 class="text-primary mb-3">Cierre de Caja</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Efectivo Esperado:</td>
+                            <td class="text-end">Bs. ${data.caja.efectivo_esperado.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td>Efectivo Contado:</td>
+                            <td class="text-end">Bs. ${data.caja.efectivo_contado.toFixed(2)}</td>
+                        </tr>
+                        <tr class="fw-bold ${data.caja.diferencia < 0 ? 'text-danger' : data.caja.diferencia > 0 ? 'text-success' : 'text-info'}">
+                            <td>Diferencia:</td>
+                            <td class="text-end">${data.caja.diferencia < 0 ? '-' : '+'} Bs. ${Math.abs(data.caja.diferencia).toFixed(2)}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Movimientos -->
+                <div>
+                    <h6 class="text-primary mb-3">
+                        Movimientos (${data.movimientos.length})
+                    </h6>
+                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                        ${data.movimientos.map(mov => `
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <small class="text-muted">${formatearFecha(mov.fecha)}</small><br>
+                                        <span>${mov.concepto}</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge ${mov.tipo === 'ingreso' ? 'bg-success' : 'bg-danger'}">
+                                            ${mov.tipo === 'ingreso' ? '+' : '-'} Bs. ${mov.monto.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalDetalleCaja'));
+        modal.show();
+        
+    } catch (error) {
+        console.error('Error al cargar detalle:', error);
+        alert('Error al cargar el detalle de la caja');
+    }
+}
+
+// Calcular estadísticas
+function calcularEstadisticas() {
+    const hoy = new Date();
+    const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    const cajasMes = cajasHistorial.filter(c => 
+        new Date(c.fecha_apertura) >= inicioMes
+    );
+    
+    const totalVentas = cajasHistorial.reduce((sum, c) => sum + c.total_ingresos, 0);
+    const promedio = cajasHistorial.length > 0 ? totalVentas / cajasHistorial.length : 0;
+    
+    document.getElementById('cajasMes').textContent = cajasMes.length;
+    document.getElementById('promedioVentas').textContent = `Bs. ${promedio.toFixed(0)}`;
+    document.getElementById('totalCajas').textContent = cajasHistorial.length;
+}
+
+// Aplicar filtros
+function aplicarFiltros() {
+    cargarHistorial();
+}
+
+// Limpiar filtros
+function limpiarFiltros() {
+    document.getElementById('fechaDesde').value = '';
+    document.getElementById('fechaHasta').value = '';
+    cargarHistorial();
+}
+
+// Exportar historial
+function exportarHistorial() {
+    const fechaDesde = document.getElementById('fechaDesde').value;
+    const fechaHasta = document.getElementById('fechaHasta').value;
+    
+    const params = new URLSearchParams();
+    if (fechaDesde) params.append('fecha_desde', fechaDesde);
+    if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+    
+    window.location.href = `/api/caja/exportar?${params}`;
+}
+
+// Exportar caja individual
+function exportarCajaIndividual() {
+    if (cajaSeleccionada) {
+        window.location.href = `/api/caja/exportar?caja_id=${cajaSeleccionada}`;
+    }
+}
+
+// Utilidades
+function formatearFecha(fecha) {
+    return new Date(fecha).toLocaleString('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function calcularDuracion(inicio, fin) {
+    const fechaInicio = new Date(inicio);
+    const fechaFin = new Date(fin);
+    const diferencia = fechaFin - fechaInicio;
+    
+    const horas = Math.floor(diferencia / (1000 * 60 * 60));
+    const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${horas}h ${minutos}m`;
+}
+</script>
+{% endblock %}

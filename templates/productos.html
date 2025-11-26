@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Productos - Beer Licorería{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-image {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    .stock-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    
+    .action-buttons .btn {
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .table-hover tbody tr {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .low-stock-row {
+        background-color: #fff3cd !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div class="mb-2 mb-md-0">
+                    <h1 class="h2 mb-0">
+                        <i class="bi bi-box-seam text-primary"></i> Gestión de Productos
+                    </h1>
+                    <p class="text-muted mb-0">Administra el inventario de la licorería</p>
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="window.location.href='{{ url_for('producto_nuevo') }}'">
+                        <i class="bi bi-plus-circle"></i> Nuevo Producto
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="exportarExcel()">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                    </button>
+                </div>
+            </div>
+            <hr>
+        </div>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Productos</h6>
+                            <h3 class="mb-0 fw-bold" id="totalProductos">0</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-boxes text-primary fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Valor Total</h6>
+                            <h3 class="mb-0 fw-bold" id="valorTotal">Bs. 0.00</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-cash-stack text-success fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Stock Bajo</h6>
+                            <h3 class="mb-0 fw-bold text-warning" id="stockBajo">0</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-exclamation-triangle text-warning fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Categorías</h6>
+                            <h3 class="mb-0 fw-bold" id="totalCategorias">0</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-tags text-info fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros y búsqueda -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Búsqueda -->
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-search"></i> Buscar producto
+                            </label>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Nombre, descripción o categoría...">
+                        </div>
+
+                        <!-- Filtro por categoría -->
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">
+                                <i class="bi bi-funnel"></i> Categoría
+                            </label>
+                            <select class="form-select" id="filterCategoria">
+                                <option value="">Todas las categorías</option>
+                                <option value="cerveza">Cerveza</option>
+                                <option value="vino">Vino</option>
+                                <option value="whisky">Whisky</option>
+                                <option value="ron">Ron</option>
+                                <option value="vodka">Vodka</option>
+                                <option value="tequila">Tequila</option>
+                                <option value="licor">Licor</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <!-- Filtro por stock -->
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">
+                                <i class="bi bi-box"></i> Estado del stock
+                            </label>
+                            <select class="form-select" id="filterStock">
+                                <option value="">Todos</option>
+                                <option value="disponible">Con stock</option>
+                                <option value="bajo">Stock bajo</option>
+                                <option value="agotado">Agotado</option>
+                            </select>
+                        </div>
+
+                        <!-- Botón limpiar -->
+                        <div class="col-12 col-md-2 d-flex align-items-end">
+                            <button class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
+                                <i class="bi bi-x-circle"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="productosTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="80">Imagen</th>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th>Unidad</th>
+                                    <th width="120">P. Compra</th>
+                                    <th width="120">P. Venta</th>
+                                    <th width="100">Stock</th>
+                                    <th width="150" class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productosTableBody">
+                                <!-- Los productos se cargarán aquí con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mensaje cuando no hay productos -->
+                    <div class="text-center py-5 d-none" id="noProductos">
+                        <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="text-muted mt-3">No hay productos registrados</h5>
+                        <p class="text-muted">Agrega tu primer producto haciendo clic en "Nuevo Producto"</p>
+                        <button class="btn btn-primary" onclick="window.location.href='{{ url_for('producto_nuevo') }}'">
+                            <i class="bi bi-plus-circle"></i> Agregar Producto
+                        </button>
+                    </div>
+
+                    <!-- Paginación (opcional para futuro) -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-muted" id="resultadosInfo">Mostrando 0 productos</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmar eliminación -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">¿Estás seguro de que deseas eliminar este producto?</p>
+                <p class="text-muted mb-0"><strong id="deleteProductName"></strong></p>
+                <p class="text-danger mt-2 mb-0">
+                    <small><i class="bi bi-info-circle"></i> Esta acción no se puede deshacer.</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/productos.js') }}"></script>
+{% endblock %}

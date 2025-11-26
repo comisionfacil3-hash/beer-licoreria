@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Ventas - Beer Licorería{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div class="mb-2 mb-md-0">
+                    <h1 class="h2 mb-0">
+                        <i class="bi bi-clock-history text-primary"></i> Historial de Ventas
+                    </h1>
+                    <p class="text-muted mb-0">Consulta y gestiona todas las ventas realizadas</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('pos') }}" class="btn btn-success">
+                        <i class="bi bi-cart-plus"></i> Nueva Venta
+                    </a>
+                    <button class="btn btn-outline-primary" onclick="exportarVentasExcel()">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                    </button>
+                </div>
+            </div>
+            <hr>
+        </div>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Ventas Hoy</h6>
+                            <h3 class="mb-0 fw-bold" id="ventasHoy">0</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-cart-check text-success fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Hoy</h6>
+                            <h3 class="mb-0 fw-bold text-success" id="totalHoy">Bs. 0.00</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-cash-coin text-primary fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Ventas del Mes</h6>
+                            <h3 class="mb-0 fw-bold" id="ventasMes">0</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-calendar-month text-info fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total del Mes</h6>
+                            <h3 class="mb-0 fw-bold text-primary" id="totalMes">Bs. 0.00</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-graph-up text-warning fs-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">
+                                <i class="bi bi-calendar"></i> Fecha Desde
+                            </label>
+                            <input type="date" class="form-control" id="fechaDesde">
+                        </div>
+
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">
+                                <i class="bi bi-calendar"></i> Fecha Hasta
+                            </label>
+                            <input type="date" class="form-control" id="fechaHasta">
+                        </div>
+
+                        <div class="col-12 col-md-3">
+                            <label class="form-label">
+                                <i class="bi bi-credit-card"></i> Método de Pago
+                            </label>
+                            <select class="form-select" id="filtroMetodoPago">
+                                <option value="">Todos</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="qr">QR</option>
+                                <option value="credito">Crédito</option>
+                                <option value="mixto">Mixto</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 col-md-3 d-flex align-items-end gap-2">
+                            <button class="btn btn-primary flex-grow-1" onclick="aplicarFiltros()">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de ventas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="80">ID</th>
+                                    <th>Fecha y Hora</th>
+                                    <th>Método de Pago</th>
+                                    <th>Cliente</th>
+                                    <th width="120">Total</th>
+                                    <th width="100">Estado</th>
+                                    <th width="100" class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ventasTableBody">
+                                <!-- Las ventas se cargarán aquí con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mensaje cuando no hay ventas -->
+                    <div class="text-center py-5 d-none" id="noVentas">
+                        <i class="bi bi-cart-x text-muted" style="font-size: 4rem;"></i>
+                        <h5 class="text-muted mt-3">No hay ventas registradas</h5>
+                        <p class="text-muted">Las ventas aparecerán aquí cuando realices la primera venta</p>
+                        <a href="{{ url_for('pos') }}" class="btn btn-success">
+                            <i class="bi bi-cart-plus"></i> Hacer Primera Venta
+                        </a>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-muted" id="resultadosInfo">Mostrando 0 ventas</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Ver Detalle de Venta -->
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-receipt"></i> Detalle de Venta #<span id="ventaId"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalleVentaContent">
+                <!-- El contenido se cargará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ventas.js') }}"></script>
+{% endblock %}
